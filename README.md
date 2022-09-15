@@ -1,0 +1,2 @@
+# depthmap_sr
+In this master thesis project we work on depth map super resolution using deep learning techniques. Dataset samples are low resolution (LR) depth maps and intensity textures of scanned scene from Photoneo 3D scanner. Ground truth for every sample is high resolution (HR) depth map. Our goal is to design convolutional neural network with an architecture suitable for this problem. We also plan to propose evaluation metric for output depth maps.
