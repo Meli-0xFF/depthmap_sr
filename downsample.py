@@ -32,13 +32,13 @@ class Downsampling:
           fg = w[w <= w_avg]
 
           if (w_max - w_min) > edge_treshold:
-            w_median = self.custom_median(w)
+            w_median = self.__custom_median(w)
             if w_median == 0:
               self.lr_depth_map[i, j] = w_max
             else:
               self.lr_depth_map[i, j] = w_median
           else:
-            fg_median = self.custom_median(fg)
+            fg_median = self.__custom_median(fg)
             if fg_median == 0:
               self.lr_depth_map[i, j] = w_max
             else:
@@ -47,6 +47,6 @@ class Downsampling:
 
     return self.lr_depth_map
 
-  def custom_median(self, array):
+  def __custom_median(self, array):
     sorted = np.sort(array)
     return sorted[int(sorted.shape[0]/2)]

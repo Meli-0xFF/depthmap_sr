@@ -1,17 +1,24 @@
 import cv2 as cv
-from utils import *
+from downsample import *
 from pointcloud import *
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 def main():
-  hr_depth_map = cv.imread("../data/led-warior/depth_map_out_1219.tif", cv.IMREAD_ANYDEPTH)
-  create_ply(hr_depth_map, "hr_warior")
+  hr_depth_map = cv.imread("../data/led-warior/depth_map_out/depth_map_out_1219.tif", cv.IMREAD_ANYDEPTH)
+  hr_point_coud = Pointcloud(hr_depth_map)
+  hr_point_coud.create_ply("hr_warior")
 
-  ds = Downsampling(hr_depth_map, 2)
+  ds_factor = 4
+  ds = Downsampling(hr_depth_map, ds_factor)
   lr_depth_map = ds.median_method()
-  create_ply(lr_depth_map, "lr_warior")
 
-  plt.imshow(lr_depth_map, cmap="winter")
+  lr_point_coud = Pointcloud(lr_depth_map)
+  lr_point_coud.create_ply(str(ds_factor) + "-lr_warior")
+
+  cmap = mpl.cm.get_cmap("winter").copy()
+  cmap.set_under(color='black')
+  plt.imshow(lr_depth_map, cmap=cmap, vmin=0.0000001)
   plt.show()
 
 if __name__ == "__main__":

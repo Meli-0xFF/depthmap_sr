@@ -7,7 +7,7 @@
 #     - arg4: LR directory path
 # Example: python create_lr_data.py out 2 ../data/led-warior/ ../data/lr-led-warior/
 
-from utils import *
+from downsample import *
 import os
 import sys
 import cv2 as cv
