@@ -131,6 +131,7 @@ dmypy.json
 # Idea
 .idea/
 
-# PLY files
+# Output files
 ply/
 dataset/
+result/
