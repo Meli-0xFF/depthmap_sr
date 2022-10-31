@@ -13,13 +13,14 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def train(dataloader, model, optimizer, loss_function, history):
+  model.to(torch.device(device))
   model.train()
 
   train_loss = 0
-  bar = tqdm(total=len(dataloader.dataset), desc="Train:")
+  bar = tqdm(total=len(dataloader.dataset), desc="Train")
 
   for batch, (lr_depth_map, texture, hr_depth_map) in enumerate(dataloader):
-    lr_depth_map, texture, hr_depth_map = lr_depth_map.to(device), texture.to(device), hr_depth_map.to(device)
+    lr_depth_map, texture, hr_depth_map = lr_depth_map.to(torch.device(device)), texture.to(torch.device(device)), hr_depth_map.to(torch.device(device))
     optimizer.zero_grad()
     pred = model.forward((texture.float(), lr_depth_map.float()))
     loss = loss_function(pred, hr_depth_map)
@@ -35,15 +36,16 @@ def train(dataloader, model, optimizer, loss_function, history):
 
 
 def test(dataloader, model, loss_function, history):
+  model.to(torch.device(device))
   model.eval()
 
   test_loss = 0
 
   with torch.no_grad():
-    for lr, tx, hr in tqdm(dataloader, desc="Test:"):
-      lr, tx, hr = lr.to(device), tx.to(device), hr.to(device)
-      pred = model.forward((tx.float(), lr.float()))
-      test_loss += loss_function(pred, hr)
+    for lr_depth_map, texture, hr_depth_map in tqdm(dataloader, desc="Test"):
+      lr_depth_map, texture, hr_depth_map = lr_depth_map.to(torch.device(device)), texture.to(torch.device(device)), hr_depth_map.to(torch.device(device))
+      pred = model.forward((texture.float(), lr_depth_map.float()))
+      test_loss += loss_function(pred, hr_depth_map)
 
   test_loss /= len(dataloader)
   history.append(test_loss)

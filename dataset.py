@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import cv2 as cv
+import torch
 from torch.utils.data import Dataset
 
 
@@ -16,6 +17,11 @@ class DepthMapSRDataset(Dataset):
 
     assert os.path.isfile('dataset/' + self.name + '.npy'), "Dataset '" + self.name + "' does not exist"
     self.data = np.load('dataset/' + self.name + '.npy', allow_pickle=True).tolist()
+
+    shuffler = np.random.permutation(len(self.data["hr"]))
+    self.data["hr"] = self.data["hr"][shuffler]
+    self.data["lr"] = self.data["lr"][shuffler]
+    self.data["tx"] = self.data["tx"][shuffler]
 
     self.train_data = {"lr" : self.data["lr"][:int(len(self.data['tx']) * self.train_part)],
                        "tx" : self.data["tx"][:int(len(self.data['tx']) * self.train_part)],
@@ -77,10 +83,9 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False):
         lr_depth_maps = np.empty((dataset_size, lr_depth_map.shape[0], lr_depth_map.shape[1]), dtype=float)
 
     if scale_lr:
-      lr_depth_map = np.transpose(lr_depth_map)
-      lr_depth_map = cv.resize(lr_depth_map, dsize=(hr_depth_maps.shape[1], hr_depth_maps.shape[2]),
-                                interpolation=cv.INTER_CUBIC)
-      lr_depth_map = np.transpose(lr_depth_map)
+      lr_tensor = torch.from_numpy(np.expand_dims(lr_depth_map, 0))
+      lr_tensor = torch.nn.functional.interpolate(lr_tensor.unsqueeze(0), size=(hr_depth_maps.shape[1], hr_depth_maps.shape[2]), mode='bilinear', align_corners=False)
+      lr_depth_map = lr_tensor.numpy()
 
     lr_depth_maps[idx] = lr_depth_map
     idx += 1
