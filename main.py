@@ -7,14 +7,11 @@ def main():
   dataset_name = 'lr-4-warior'
 
   '''
-  
-  create_dataset(dataset_name, hr_dir='../data/led-warior/depth_map_out/',
-                                lr_dir='../data/lr-4-led-warior/',
-                                textures_dir='../data/led-warior/texture_laser/',
+  create_dataset(dataset_name, hr_dir='data/led-warior/depth_map_out/',
+                                lr_dir='data/led-warior/lr_4_depth_map_out/',
+                                textures_dir='data/led-warior/texture_laser/',
                                 scale_lr=True)
   compute_mean_and_std(dataset_name)
-  
-  
   '''
 
   norm = get_mean_and_std(dataset_name)

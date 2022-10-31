@@ -133,5 +133,6 @@ dmypy.json
 
 # Output files
 ply/
-dataset/
+data/
 result/
+dataset/
