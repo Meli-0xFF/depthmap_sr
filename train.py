@@ -59,7 +59,7 @@ parser.add_argument('--model', default='FSDR', help='choose model')
 parser.add_argument('--scale', type=int, default=4, help='scale factor')
 parser.add_argument('--lr', default='0.0005', type=float, help='learning rate')
 parser.add_argument('--result', default='./result', help='learning rate')
-parser.add_argument('--epoch', default=1, type=int, help='max epoch')
+parser.add_argument('--epoch', default=1000, type=int, help='max epoch')
 
 opt = parser.parse_args()
 print(opt)
@@ -74,10 +74,10 @@ logging.basicConfig(filename='%s/train.log' % result_root, format='%(asctime)s %
 
 print('> Loading datasets')
 dataset_name = 'lr-4-warior'
-norm = get_mean_and_std(dataset_name)
-lr_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(norm[0], norm[1])])
-tx_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(norm[2], norm[3])])
-hr_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(norm[4], norm[5])])
+
+lr_transform = transforms.Compose([transforms.ToTensor()])
+tx_transform = transforms.Compose([transforms.ToTensor()])
+hr_transform = transforms.Compose([transforms.ToTensor()])
 
 train_dataset = DepthMapSRDataset(dataset_name, train=True,
                                       lr_transform=lr_transform,
