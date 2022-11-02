@@ -4,7 +4,7 @@ from alive_progress import alive_bar
 import os
 
 
-class Pointcloud:
+class PointCloud:
   def __init__(self, depth_map):
     self.depth_map = depth_map
     self.point_cloud = self.__create_point_clound()
