@@ -135,4 +135,5 @@ dmypy.json
 ply/
 data/
 result/
+result_def_map/
 dataset/
