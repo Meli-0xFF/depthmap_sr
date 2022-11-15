@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from torchvision import transforms
 from dataset import *
 from fdsr import FDSR_Net
 from torch.utils.data import DataLoader

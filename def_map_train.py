@@ -34,7 +34,9 @@ def train(dataloader, model, optimizer, loss_function, history):
   bar = tqdm(total=len(dataloader.dataset), desc="Train")
 
   for batch, (lr_depth_map, texture, hr_depth_map) in enumerate(dataloader):
-    lr_depth_map, texture, hr_depth_map = lr_depth_map.to(torch.device(device)), texture.to(torch.device(device)), hr_depth_map.to(torch.device(device))
+    lr_depth_map = lr_depth_map.to(torch.device(device))
+    hr_depth_map = hr_depth_map.to(torch.device(device))
+
     optimizer.zero_grad()
     pred = model.forward(lr_depth_map.float())
     loss = loss_function(pred, hr_depth_map)
@@ -58,7 +60,9 @@ def test(dataloader, model, loss_function, history):
 
   with torch.no_grad():
     for lr_depth_map, texture, hr_depth_map in tqdm(dataloader, desc="Test"):
-      lr_depth_map, texture, hr_depth_map = lr_depth_map.to(torch.device(device)), texture.to(torch.device(device)), hr_depth_map.to(torch.device(device))
+      lr_depth_map = lr_depth_map.to(torch.device(device))
+      hr_depth_map = hr_depth_map.to(torch.device(device))
+
       pred = model.forward(lr_depth_map.float())
       test_loss += loss_function(pred, hr_depth_map)
       p_error += pixel_error(pred, hr_depth_map)
@@ -95,16 +99,8 @@ lr_transform = transforms.Compose([transforms.ToTensor()])
 tx_transform = transforms.Compose([transforms.ToTensor()])
 hr_transform = transforms.Compose([transforms.ToTensor()])
 
-train_dataset = DepthMapSRDataset(dataset_name, train=True,
-                                      lr_transform=lr_transform,
-                                      tx_transform=tx_transform,
-                                      hr_transform=hr_transform,
-                                      task='def_map')
-test_dataset = DepthMapSRDataset(dataset_name, train=False,
-                                      lr_transform=lr_transform,
-                                      tx_transform=tx_transform,
-                                      hr_transform=hr_transform,
-                                      task='def_map')
+train_dataset = DepthMapSRDataset(dataset_name, train=True, task='def_map')
+test_dataset = DepthMapSRDataset(dataset_name, train=False, task='def_map')
 
 train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)
