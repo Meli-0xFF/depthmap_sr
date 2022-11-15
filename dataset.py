@@ -3,17 +3,20 @@ import os
 import cv2 as cv
 import torch
 from torch.utils.data import Dataset
-
+from unet import *
+from tqdm import tqdm
 
 class DepthMapSRDataset(Dataset):
 
-  def __init__(self, name, lr_transform=None, tx_transform=None, hr_transform=None, train=True, train_part=0.7):
+  def __init__(self, name, lr_transform=None, tx_transform=None, hr_transform=None, dm_transform=None, train=True, train_part=0.7, task='depth_map_sr'):
     self.name = name
     self.lr_transform = lr_transform
     self.tx_transform = tx_transform
     self.hr_transform = hr_transform
+    self.dm_transform = dm_transform
     self.train = train
     self.train_part = train_part
+    self.task = task
 
     assert os.path.isfile('dataset/' + self.name + '.npy'), "Dataset '" + self.name + "' does not exist"
     self.data = np.load('dataset/' + self.name + '.npy', allow_pickle=True).tolist()
@@ -23,13 +26,21 @@ class DepthMapSRDataset(Dataset):
     self.data["lr"] = self.data["lr"][shuffler]
     self.data["tx"] = self.data["tx"][shuffler]
 
-    self.train_data = {"lr" : self.data["lr"][:int(len(self.data['tx']) * self.train_part)],
-                       "tx" : self.data["tx"][:int(len(self.data['tx']) * self.train_part)],
+    self.train_data = {"lr": self.data["lr"][:int(len(self.data['tx']) * self.train_part)],
+                       "tx": self.data["tx"][:int(len(self.data['tx']) * self.train_part)],
                        "hr": self.data["hr"][:int(len(self.data['tx']) * self.train_part)]}
 
     self.test_data = {"lr": self.data["lr"][int(len(self.data['tx']) * self.train_part):],
                       "tx": self.data["tx"][int(len(self.data['tx']) * self.train_part):],
                       "hr": self.data["hr"][int(len(self.data['tx']) * self.train_part):]}
+
+    if self.task == 'def_map':
+      for i in range(len(self.data["hr"])):
+        self.data["hr"][i] = np.where(self.data["hr"][i] != 0, 1.0, 0)
+    elif self.task == 'depth_map_sr':
+      self.data["dm"] = self.data["dm"][shuffler]
+      self.train_data["dm"] = self.data["dm"][:int(len(self.data['dm']) * self.train_part)]
+      self.test_data["dm"] = self.data["dm"][int(len(self.data['dm']) * self.train_part):]
 
   def __len__(self):
     if self.train:
@@ -38,10 +49,16 @@ class DepthMapSRDataset(Dataset):
 
 
   def __getitem__(self, idx):
-    if self.train:
-      sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx]]
+    if self.task == 'depth_map_sr':
+      if self.train:
+        sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx], self.train_data['dm'][idx]]
+      else:
+        sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx], self.test_data['dm'][idx]]
     else:
-      sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx]]
+      if self.train:
+        sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx]]
+      else:
+        sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx]]
 
     if self.lr_transform:
       sample[0] = self.lr_transform(sample[0])
@@ -52,9 +69,15 @@ class DepthMapSRDataset(Dataset):
     if self.hr_transform:
       sample[2] = self.hr_transform(sample[2])
 
-    return sample[0], sample[1], sample[2]
+    if self.dm_transform and self.task == 'depth_map_sr':
+      sample[3] = self.hr_transform(sample[3])
 
-def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False):
+    if self.task == 'depth_map_sr':
+      return sample[0], sample[1], sample[2], sample[3]
+    else:
+      return sample[0], sample[1], sample[2]
+
+def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=False):
   print("--- CREATE DATASET: " + name + " ---")
   data = dict()
   hr_depth_maps = None
@@ -101,51 +124,24 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False):
     idx += 1
   data['tx'] = textures
 
+  if def_maps:
+    print("===> Computing def_maps")
+    model = UNet(in_channels=1, out_channels=1).float()
+    model.load_state_dict(torch.load("result_def_map/20221103183019-scale_4-model_UNET-epochs_100-lr_0.0005/trained_model.pt"))
+    def_maps = np.empty((len(data["hr"]), data["hr"][0].shape[0], data["hr"][0].shape[1]), dtype=float)
+    transform = torchvision.transforms.ToTensor()
+    for i in tqdm(range(len(data["hr"])), desc="Computing def_maps"):
+      input_tensor = transform(data["lr"][i])
+      input_tensor = torch.unsqueeze(input_tensor, dim=0)
+      with torch.no_grad():
+        tensor_output = model.forward(input_tensor.float())
+      act = nn.Sigmoid()
+      tensor_output = act(tensor_output) > 0.5
+      tensor_output = tensor_output.float()
+      def_maps[i] = tensor_output[0][0].numpy()
+    data['dm'] = def_maps
+
   print("===> SAVING .npy file ...")
   np.save("dataset/" + name + ".npy", data, allow_pickle=True)
 
   return data
-
-
-def compute_mean_and_std(name):
-  lr_sum, lr_squared_sum = 0, 0
-  tx_sum, tx_squared_sum = 0, 0
-  hr_sum, hr_squared_sum = 0, 0
-
-  assert os.path.isfile('dataset/' + name + '.npy'), "Dataset '" + name + "' does not exist"
-
-  print("===> Computing dataset mean and std")
-  data = np.load('dataset/' + name + '.npy', allow_pickle=True).tolist()
-
-  for idx in range(len(data)):
-    lr_sum += np.mean(data['lr'][idx])
-    lr_squared_sum += np.mean(data['lr'][idx] ** 2)
-
-    tx_sum += np.mean(data['tx'][idx])
-    tx_squared_sum += np.mean(data['tx'][idx] ** 2)
-
-    hr_sum += np.mean(data['hr'][idx])
-    hr_squared_sum += np.mean(data['hr'][idx] ** 2)
-
-  lr_mean = lr_sum / len(data)
-  lr_std = (lr_squared_sum / len(data) - lr_mean ** 2) ** 0.5
-
-  tx_mean = tx_sum / len(data)
-  tx_std = (tx_squared_sum / len(data) - tx_mean ** 2) ** 0.5
-
-  hr_mean = hr_sum / len(data)
-  hr_std = (hr_squared_sum / len(data) - hr_mean ** 2) ** 0.5
-
-  n_file = open("dataset/" + name + "_normalization.txt", "a")
-
-  n_file.write("lr_mean, lr_std, tx_mean, tx_std, hr_mean, hr_std =" +
-                             str(lr_mean) + ", " + str(lr_std) + ", " +
-                             str(tx_mean) + ", " + str(tx_std) + ", " +
-                             str(hr_mean) + ", " + str(hr_std) + "\n")
-  n_file.close()
-
-
-def get_mean_and_std(name):
-  assert os.path.isfile('dataset/' + name + '_normalization.txt'), "Normalization for dataset '" + name + "' not generated"
-  n_file = open("dataset/" + name + "_normalization.txt", "r")
-  return [float(item) for item in n_file.readline().split('=', 1)[1].split(", ", -1)]
