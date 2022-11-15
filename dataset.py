@@ -5,15 +5,13 @@ import torch
 from torch.utils.data import Dataset
 from unet import *
 from tqdm import tqdm
+from torchvision import transforms
 
 class DepthMapSRDataset(Dataset):
 
-  def __init__(self, name, lr_transform=None, tx_transform=None, hr_transform=None, dm_transform=None, train=True, train_part=0.7, task='depth_map_sr'):
+  def __init__(self, name, transform=transforms.Compose([transforms.ToTensor()]), train=True, train_part=0.7, task='depth_map_sr'):
     self.name = name
-    self.lr_transform = lr_transform
-    self.tx_transform = tx_transform
-    self.hr_transform = hr_transform
-    self.dm_transform = dm_transform
+    self.transform = transform
     self.train = train
     self.train_part = train_part
     self.task = task
@@ -60,17 +58,13 @@ class DepthMapSRDataset(Dataset):
       else:
         sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx]]
 
-    if self.lr_transform:
-      sample[0] = self.lr_transform(sample[0])
+    if self.transform:
+      sample[0] = self.transform(sample[0])
+      sample[1] = self.transform(sample[1])
+      sample[2] = self.transform(sample[2])
 
-    if self.tx_transform:
-      sample[1] = self.tx_transform(sample[1])
-
-    if self.hr_transform:
-      sample[2] = self.hr_transform(sample[2])
-
-    if self.dm_transform and self.task == 'depth_map_sr':
-      sample[3] = self.hr_transform(sample[3])
+      if self.task == 'depth_map_sr':
+        sample[3] = self.transform(sample[3])
 
     if self.task == 'depth_map_sr':
       return sample[0], sample[1], sample[2], sample[3]
