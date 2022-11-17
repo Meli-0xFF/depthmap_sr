@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from torchvision import transforms
 from dataset import *
-import models
+from fdsr import FDSR_Net
 from torch.utils.data import DataLoader
 from pointcloud import *
 
@@ -18,22 +17,11 @@ def main():
 
   '''
 
-  lr_transform = transforms.Compose([transforms.ToTensor()])
-  tx_transform = transforms.Compose([transforms.ToTensor()])
-  hr_transform = transforms.Compose([transforms.ToTensor()])
-  dm_transform = transforms.Compose([transforms.ToTensor()])
-
-  dataset = DepthMapSRDataset(dataset_name, train=False,
-                                        lr_transform=lr_transform,
-                                        tx_transform=tx_transform,
-                                        hr_transform=hr_transform,
-                                        dm_transform=dm_transform,
-                                        task='depth_map_sr')
-
+  dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr')
   dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
   lr_depth_map, texture, hr_depth_map, def_map = next(iter(dataloader))
-  model = models.FSDR_Net(num_feats=32, kernel_size=3).float()
+  model = FDSR_Net(num_feats=32, kernel_size=3).float()
   model.load_state_dict(torch.load("result/20221106002135-scale_4-model_FSDR-epochs_100-lr_0.0005/trained_model.pt"))
 
   with torch.no_grad():

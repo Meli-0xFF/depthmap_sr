@@ -1,4 +1,3 @@
-from torchvision import transforms
 from torch.utils.data import DataLoader
 from dataset import *
 from unet import *
@@ -26,11 +25,7 @@ lr_transform = transforms.Compose([transforms.ToTensor()])
 tx_transform = transforms.Compose([transforms.ToTensor()])
 hr_transform = transforms.Compose([transforms.ToTensor()])
 
-dataset = DepthMapSRDataset(dataset_name, train=False,
-                                        lr_transform=lr_transform,
-                                        tx_transform=tx_transform,
-                                        hr_transform=hr_transform,
-                                        task='def_map')
+dataset = DepthMapSRDataset(dataset_name, train=False, task='def_map')
 
 dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
