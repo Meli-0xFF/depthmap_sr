@@ -7,12 +7,9 @@ from model import Model
 
 
 parser = argparse.ArgumentParser(description='Torch Depth map SR')
-
-parser.add_argument('--model', default='FDSR', help='choose model')
+parser.add_argument('--model', default='DKN', help='choose model')
 parser.add_argument('--result', default='./result', help='result dir')
-
 opt = parser.parse_args()
-print(opt)
 
 epochs = 100
 batch_size = 1
@@ -21,7 +18,7 @@ if opt.model == 'FDSR':
   epochs = 1000
   batch_size = 1
 elif opt.model == 'DKN':
-  epochs = 100
+  epochs = 20
   batch_size = 1
 
 s = datetime.now().strftime('%Y%m%d%H%M%S')

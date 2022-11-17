@@ -24,19 +24,19 @@ def grid_generator(k, r, n):
 class Kernel_DKN(nn.Module):
   def __init__(self, input_channel, kernel_size):
     super(Kernel_DKN, self).__init__()
-    self.conv1 = nn.Conv2d(input_channel, 32, 7)
-    self.conv1_bn = nn.BatchNorm2d(32)
-    self.conv2 = nn.Conv2d(32, 32, 2, stride=(2, 2))
-    self.conv3 = nn.Conv2d(32, 64, 5)
-    self.conv3_bn = nn.BatchNorm2d(64)
-    self.conv4 = nn.Conv2d(64, 64, 2, stride=(2, 2))
-    self.conv5 = nn.Conv2d(64, 128, 5)
-    self.conv5_bn = nn.BatchNorm2d(128)
-    self.conv6 = nn.Conv2d(128, 128, 3)
-    self.conv7 = nn.Conv2d(128, 128, 3)
+    self.conv1 = nn.Conv2d(input_channel, 16, 7)
+    self.conv1_bn = nn.BatchNorm2d(16)
+    self.conv2 = nn.Conv2d(16, 16, 2, stride=(2, 2))
+    self.conv3 = nn.Conv2d(16, 32, 5)
+    self.conv3_bn = nn.BatchNorm2d(32)
+    self.conv4 = nn.Conv2d(32, 32, 2, stride=(2, 2))
+    self.conv5 = nn.Conv2d(32, 64, 5)
+    self.conv5_bn = nn.BatchNorm2d(64)
+    self.conv6 = nn.Conv2d(64, 64, 3)
+    self.conv7 = nn.Conv2d(64, 64, 3)
 
-    self.conv_weight = nn.Conv2d(128, kernel_size ** 2, 1)
-    self.conv_offset = nn.Conv2d(128, 2 * kernel_size ** 2, 1)
+    self.conv_weight = nn.Conv2d(64, kernel_size ** 2, 1)
+    self.conv_offset = nn.Conv2d(64, 2 * kernel_size ** 2, 1)
 
   def forward(self, x):
     x = F.relu(self.conv1_bn(self.conv1(x)))
@@ -100,11 +100,9 @@ class DKN(nn.Module):
     return out
 
   def _infer(self, x):
-    alloc = torch.cuda.memory_allocated(0)
     image, depth = x
     imkernel, imoffset = self.ImageKernel(image)
     depthkernel, depthoffset = self.DepthKernel(depth)
-
 
     weight = imkernel * depthkernel
     offset = imoffset * depthoffset
@@ -113,9 +111,6 @@ class DKN(nn.Module):
       weight -= torch.mean(weight, 1).unsqueeze(1).expand_as(weight)
     else:
       weight /= torch.sum(weight, 1).unsqueeze(1).expand_as(weight)
-
-    alloc = torch.cuda.memory_allocated(0) - alloc
-    print("INFER alloc diff: " + str(alloc))
 
     return weight, offset
 
