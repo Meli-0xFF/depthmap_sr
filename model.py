@@ -3,7 +3,7 @@ import torch.nn as nn
 from tqdm import tqdm
 from fdsr import FDSR_Net
 from dkn import DKN
-
+from dct import DCTNet
 
 class Model:
   def __init__(self, name, train_dataloader, test_dataloader):
@@ -29,6 +29,12 @@ class Model:
       self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001)
       self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10000, gamma=0.2)
 
+    elif self.name == 'DCT':
+      self.loss_function = nn.MSELoss()
+      self.model = DCTNet()
+      self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001, weight_decay=0.0)
+      self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.5)
+
   def train(self):
     self.model.to(torch.device(self.device))
     self.model.train()
@@ -39,7 +45,7 @@ class Model:
     for batch, (lr_depth_map, texture, hr_depth_map, def_map) in enumerate(self.train_dataloader):
       self.optimizer.zero_grad()
 
-      if self.name == 'DKN':
+      if self.name == 'DKN' or self.name == 'DCT':
         texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
 
       lr_depth_map = lr_depth_map.to(torch.device(self.device))
@@ -55,9 +61,13 @@ class Model:
       self.optimizer.step()
       if self.scheduler is not None:
         self.scheduler.step()
+        if self.optimizer.param_groups[0]['lr'] <= 1e-6:
+          self.optimizer.param_groups[0]['lr'] = 1e-6
 
-      train_loss = loss
+      train_loss += loss
       bar.update(1)
+
+    train_loss /= len(self.test_dataloader)
 
     bar.close()
 
@@ -72,7 +82,7 @@ class Model:
 
     with torch.no_grad():
       for lr_depth_map, texture, hr_depth_map, def_map in tqdm(self.test_dataloader, desc="Test"):
-        if self.name == 'DKN':
+        if self.name == 'DKN' or self.name == 'DCT':
           texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
 
         lr_depth_map = lr_depth_map.to(torch.device(self.device))
