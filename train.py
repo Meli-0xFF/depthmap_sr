@@ -16,10 +16,10 @@ batch_size = 1
 
 if opt.model == 'FDSR':
   epochs = 1000
-  batch_size = 1
 elif opt.model == 'DKN':
   epochs = 20
-  batch_size = 1
+elif opt.model == 'DCT':
+  epochs = 200
 
 s = datetime.now().strftime('%Y%m%d%H%M%S')
 result_root = '%s/%s-model_%s-epochs_%s' % (opt.result, s, opt.model, epochs)
