@@ -42,7 +42,7 @@ class Model:
     train_loss = 0
     bar = tqdm(total=len(self.train_dataloader.dataset), desc="Train")
 
-    for batch, (lr_depth_map, texture, hr_depth_map, def_map) in enumerate(self.train_dataloader):
+    for batch, (lr_depth_map, texture, hr_depth_map) in enumerate(self.train_dataloader):
       self.optimizer.zero_grad()
 
       if self.name == 'DKN' or self.name == 'DCT':
@@ -51,10 +51,10 @@ class Model:
       lr_depth_map = lr_depth_map.to(torch.device(self.device))
       texture = texture.to(torch.device(self.device))
       hr_depth_map = hr_depth_map.to(torch.device(self.device))
-      def_map = def_map.to(torch.device(self.device))
+      def_map = torch.where(hr_depth_map >= 0, 1.0, 0).to(torch.device(self.device))
 
       pred = self.model.forward((texture.float(), lr_depth_map.float()))
-      pred = pred * def_map
+      pred = torch.where(def_map > 0, pred, -1.0)
       loss = self.loss_function(pred, hr_depth_map)
       loss.backward()
 
@@ -81,17 +81,17 @@ class Model:
     test_loss = 0
 
     with torch.no_grad():
-      for lr_depth_map, texture, hr_depth_map, def_map in tqdm(self.test_dataloader, desc="Test"):
+      for lr_depth_map, texture, hr_depth_map in tqdm(self.test_dataloader, desc="Test"):
         if self.name == 'DKN' or self.name == 'DCT':
           texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
 
         lr_depth_map = lr_depth_map.to(torch.device(self.device))
         texture = texture.to(torch.device(self.device))
         hr_depth_map = hr_depth_map.to(torch.device(self.device))
-        def_map = def_map.to(torch.device(self.device))
+        def_map = torch.where(hr_depth_map >= 0, 1.0, 0).to(torch.device(self.device))
 
         pred = self.model.forward((texture.float(), lr_depth_map.float()))
-        pred = pred * def_map
+        pred = torch.where(def_map > 0, pred, -1.0)
         test_loss += self.loss_function(pred, hr_depth_map)
 
     test_loss /= len(self.test_dataloader)

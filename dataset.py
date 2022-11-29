@@ -6,15 +6,16 @@ from torch.utils.data import Dataset
 from unet import *
 from tqdm import tqdm
 from torchvision import transforms
+from normalization import Normalization
+
 
 class DepthMapSRDataset(Dataset):
-
-  def __init__(self, name, transform=transforms.Compose([transforms.ToTensor()]), train=True, train_part=0.7, task='depth_map_sr'):
+  def __init__(self, name, train=True, train_part=0.7, task='depth_map_sr', norm=False):
     self.name = name
-    self.transform = transform
     self.train = train
     self.train_part = train_part
     self.task = task
+    self.norm = norm
 
     assert os.path.isfile('dataset/' + self.name + '.npy'), "Dataset '" + self.name + "' does not exist"
     self.data = np.load('dataset/' + self.name + '.npy', allow_pickle=True).tolist()
@@ -35,41 +36,34 @@ class DepthMapSRDataset(Dataset):
     if self.task == 'def_map':
       for i in range(len(self.data["hr"])):
         self.data["hr"][i] = np.where(self.data["hr"][i] != 0, 1.0, 0)
-    elif self.task == 'depth_map_sr':
-      self.data["dm"] = self.data["dm"][shuffler]
-      self.train_data["dm"] = self.data["dm"][:int(len(self.data['dm']) * self.train_part)]
-      self.test_data["dm"] = self.data["dm"][int(len(self.data['dm']) * self.train_part):]
+
+    if self.norm:
+      self.normalization = Normalization(self.name)
 
   def __len__(self):
     if self.train:
       return len(self.train_data['tx'])
     return len(self.test_data['tx'])
 
-
   def __getitem__(self, idx):
-    if self.task == 'depth_map_sr':
-      if self.train:
-        sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx], self.train_data['dm'][idx]]
-      else:
-        sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx], self.test_data['dm'][idx]]
+    if self.train:
+      sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx]]
     else:
-      if self.train:
-        sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx]]
-      else:
-        sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx]]
+      sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx]]
 
-    if self.transform:
-      sample[0] = self.transform(sample[0])
-      sample[1] = self.transform(sample[1])
-      sample[2] = self.transform(sample[2])
+    to_tensor = transforms.Compose([transforms.ToTensor()])
 
-      if self.task == 'depth_map_sr':
-        sample[3] = self.transform(sample[3])
+    sample[0] = to_tensor(sample[0])
+    sample[1] = to_tensor(sample[1])
+    sample[2] = to_tensor(sample[2])
 
-    if self.task == 'depth_map_sr':
-      return sample[0], sample[1], sample[2], sample[3]
-    else:
-      return sample[0], sample[1], sample[2]
+    if self.norm:
+      sample[0] = self.normalization.normalize_sample(sample[0], "depth")
+      sample[1] = self.normalization.normalize_sample(sample[1], "guide")
+      sample[2] = self.normalization.normalize_sample(sample[2], "depth")
+
+    return sample[0], sample[1], sample[2]
+
 
 def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=False):
   print("--- CREATE DATASET: " + name + " ---")
