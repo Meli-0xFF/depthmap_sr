@@ -7,7 +7,7 @@ from model import Model
 
 
 parser = argparse.ArgumentParser(description='Torch Depth map SR')
-parser.add_argument('--model', default='DKN', help='choose model')
+parser.add_argument('--model', default='FDSR', help='choose model')
 parser.add_argument('--result', default='./result', help='result dir')
 opt = parser.parse_args()
 
@@ -30,10 +30,10 @@ if not os.path.exists(result_root):
 logging.basicConfig(filename='%s/train.log' % result_root, format='%(asctime)s %(message)s', level=logging.INFO)
 
 print('Loading datasets...')
-dataset_name = 'lr-4-warior-with-maps'
+dataset_name = 'lr-4-warior'
 
-train_dataset = DepthMapSRDataset(dataset_name, train=True, task='depth_map_sr')
-test_dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr')
+train_dataset = DepthMapSRDataset(dataset_name, train=True, task='depth_map_sr', norm=True)
+test_dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
