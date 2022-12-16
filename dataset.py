@@ -7,6 +7,9 @@ from unet import *
 from tqdm import tqdm
 from torchvision import transforms
 from normalization import Normalization
+from skimage import measure, segmentation
+from alive_progress import alive_bar
+from filling import fill_depth_map
 
 
 class DepthMapSRDataset(Dataset):
@@ -24,18 +27,21 @@ class DepthMapSRDataset(Dataset):
     self.data["hr"] = self.data["hr"][shuffler]
     self.data["lr"] = self.data["lr"][shuffler]
     self.data["tx"] = self.data["tx"][shuffler]
+    self.data["dm"] = self.data["dm"][shuffler]
 
     self.train_data = {"lr": self.data["lr"][:int(len(self.data['tx']) * self.train_part)],
                        "tx": self.data["tx"][:int(len(self.data['tx']) * self.train_part)],
-                       "hr": self.data["hr"][:int(len(self.data['tx']) * self.train_part)]}
+                       "hr": self.data["hr"][:int(len(self.data['tx']) * self.train_part)],
+                       "dm": self.data["dm"][:int(len(self.data['dm']) * self.train_part)]}
 
     self.test_data = {"lr": self.data["lr"][int(len(self.data['tx']) * self.train_part):],
                       "tx": self.data["tx"][int(len(self.data['tx']) * self.train_part):],
-                      "hr": self.data["hr"][int(len(self.data['tx']) * self.train_part):]}
+                      "hr": self.data["hr"][int(len(self.data['tx']) * self.train_part):],
+                      "dm": self.data["dm"][int(len(self.data['dm']) * self.train_part):]}
 
-    if self.task == 'def_map':
-      for i in range(len(self.data["hr"])):
-        self.data["hr"][i] = np.where(self.data["hr"][i] != 0, 1.0, 0)
+    #if self.task == 'def_map':
+      #for i in range(len(self.data["hr"])):
+      #  self.data["hr"][i] = np.where(self.data["hr"][i] != 0, 1.0, 0)
 
     if self.norm:
       self.normalization = Normalization(self.name)
@@ -47,25 +53,26 @@ class DepthMapSRDataset(Dataset):
 
   def __getitem__(self, idx):
     if self.train:
-      sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx]]
+      sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx], self.train_data['dm'][idx]]
     else:
-      sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx]]
+      sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx], self.test_data['dm'][idx]]
 
     to_tensor = transforms.Compose([transforms.ToTensor()])
 
     sample[0] = to_tensor(sample[0])
     sample[1] = to_tensor(sample[1])
     sample[2] = to_tensor(sample[2])
+    sample[3] = to_tensor(sample[3])
 
     if self.norm:
       sample[0] = self.normalization.normalize_sample(sample[0], "depth")
       sample[1] = self.normalization.normalize_sample(sample[1], "guide")
       sample[2] = self.normalization.normalize_sample(sample[2], "depth")
 
-    return sample[0], sample[1], sample[2]
+    return sample[0], sample[1], sample[2], sample[3]
 
 
-def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=False):
+def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False):
   print("--- CREATE DATASET: " + name + " ---")
   data = dict()
   hr_depth_maps = None
@@ -83,6 +90,13 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=
     idx += 1
   data['hr'] = hr_depth_maps
 
+  if fill:
+    depth_max = 0
+    for i in range(len(data["hr"])):
+      m = np.max(data["hr"][i])
+      if m > depth_max:
+        depth_max = m
+
   print("===> Loading LR depth maps")
   idx = 0
   for file in sorted(os.listdir(lr_dir)):
@@ -92,6 +106,9 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=
         lr_depth_maps = np.empty((dataset_size, hr_depth_maps.shape[1], hr_depth_maps.shape[2]), dtype=float)
       else:
         lr_depth_maps = np.empty((dataset_size, lr_depth_map.shape[0], lr_depth_map.shape[1]), dtype=float)
+
+    if fill:
+      lr_depth_map = fill_depth_map(lr_depth_map, depth_max + 1)
 
     if scale_lr:
       lr_tensor = torch.from_numpy(np.expand_dims(lr_depth_map, 0))
@@ -113,6 +130,12 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=
   data['tx'] = textures
 
   if def_maps:
+    def_maps = np.empty((len(data["hr"]), data["hr"][0].shape[0], data["hr"][0].shape[1]), dtype=float)
+    for i in range(len(data["hr"])):
+      def_maps[i] = (data["hr"][i] > 0).astype(float)
+    data['dm'] = def_maps
+
+    '''
     print("===> Computing def_maps")
     model = UNet(in_channels=1, out_channels=1).float()
     model.load_state_dict(torch.load("result_def_map/20221103183019-scale_4-model_UNET-epochs_100-lr_0.0005/trained_model.pt"))
@@ -127,7 +150,11 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=False, def_maps=
       tensor_output = act(tensor_output) > 0.5
       tensor_output = tensor_output.float()
       def_maps[i] = tensor_output[0][0].numpy()
-    data['dm'] = def_maps
+    '''
+
+  if fill:
+    for i in range(len(data["hr"])):
+      data["hr"][i] = fill_depth_map(data["hr"][i], depth_max + 1)
 
   print("===> SAVING .npy file ...")
   np.save("dataset/" + name + ".npy", data, allow_pickle=True)
