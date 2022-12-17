@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from dataset import *
-from fdsr import FDSR_Net
+from sr_models.fdsr import FDSR_Net
 from torch.utils.data import DataLoader
-from pointcloud import *
-from normalization import Normalization
-from metrics import pixel_error
+from evaluation.pointcloud import *
+from data_preparation.normalization import Normalization
+
 
 def main():
   dataset_name = 'lr-4-warior-FILLED'

@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-from fdsr import FDSR_Net
-from dkn import DKN
-from dct import DCTNet
+from sr_models.fdsr import FDSR_Net
+from sr_models.dkn import DKN
+from sr_models.dct import DCTNet
 
 class Model:
   def __init__(self, name, train_dataloader, test_dataloader):

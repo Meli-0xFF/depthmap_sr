@@ -79,7 +79,7 @@ parser = argparse.ArgumentParser(description='Torch create HR defined pixels map
 parser.add_argument('--model', default='UNET', help='choose model')
 parser.add_argument('--scale', type=int, default=4, help='scale factor')
 parser.add_argument('--lr', default='0.00025', type=float, help='learning rate')
-parser.add_argument('--result', default='./result_def_map', help='learning rate')
+parser.add_argument('--result', default='./result_defined_pixels_prediction', help='learning rate')
 parser.add_argument('--epoch', default=100, type=int, help='max epoch')
 opt = parser.parse_args()
 print(opt)

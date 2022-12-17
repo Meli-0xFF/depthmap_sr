@@ -31,7 +31,7 @@ dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
 model = UNet(in_channels=1, out_channels=1).float()
 lr_depth_map, texture, hr_depth_map = next(iter(dataloader))
-model.load_state_dict(torch.load("result_def_map/20221108231719-scale_4-model_UNET-epochs_100-lr_0.00025/trained_model.pt"))
+model.load_state_dict(torch.load("result_defined_pixels_prediction/20221108231719-scale_4-model_UNET-epochs_100-lr_0.00025/trained_model.pt"))
 print(lr_depth_map)
 with torch.no_grad():
   tensor_output = model.forward(lr_depth_map.float())
