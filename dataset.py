@@ -1,15 +1,11 @@
-import numpy as np
 import os
-import cv2 as cv
 import torch
-from torch.utils.data import Dataset
-from unet import *
-from tqdm import tqdm
+import cv2 as cv
+import numpy as np
 from torchvision import transforms
-from normalization import Normalization
-from skimage import measure, segmentation
-from alive_progress import alive_bar
-from filling import fill_depth_map
+from torch.utils.data import Dataset
+from data_preparation.normalization import Normalization
+from data_preparation.filling import fill_depth_map
 
 
 class DepthMapSRDataset(Dataset):
@@ -39,10 +35,6 @@ class DepthMapSRDataset(Dataset):
                       "hr": self.data["hr"][int(len(self.data['tx']) * self.train_part):],
                       "dm": self.data["dm"][int(len(self.data['dm']) * self.train_part):]}
 
-    #if self.task == 'def_map':
-      #for i in range(len(self.data["hr"])):
-      #  self.data["hr"][i] = np.where(self.data["hr"][i] != 0, 1.0, 0)
-
     if self.norm:
       self.normalization = Normalization(self.name)
 
@@ -53,9 +45,15 @@ class DepthMapSRDataset(Dataset):
 
   def __getitem__(self, idx):
     if self.train:
-      sample = [self.train_data['lr'][idx], self.train_data['tx'][idx], self.train_data['hr'][idx], self.train_data['dm'][idx]]
+      sample = [self.train_data['lr'][idx],
+                self.train_data['tx'][idx],
+                self.train_data['hr'][idx],
+                self.train_data['dm'][idx]]
     else:
-      sample = [self.test_data['lr'][idx], self.test_data['tx'][idx], self.test_data['hr'][idx], self.test_data['dm'][idx]]
+      sample = [self.test_data['lr'][idx],
+                self.test_data['tx'][idx],
+                self.test_data['hr'][idx],
+                self.test_data['dm'][idx]]
 
     to_tensor = transforms.Compose([transforms.ToTensor()])
 
@@ -112,7 +110,10 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
 
     if scale_lr:
       lr_tensor = torch.from_numpy(np.expand_dims(lr_depth_map, 0))
-      lr_tensor = torch.nn.functional.interpolate(lr_tensor.unsqueeze(0), size=(hr_depth_maps.shape[1], hr_depth_maps.shape[2]), mode='bilinear', align_corners=False)
+      lr_tensor = torch.nn.functional.interpolate(lr_tensor.unsqueeze(0),
+                                                  size=(hr_depth_maps.shape[1], hr_depth_maps.shape[2]),
+                                                  mode='bilinear',
+                                                  align_corners=False)
       lr_depth_map = lr_tensor.numpy()
 
     lr_depth_maps[idx] = lr_depth_map
@@ -134,23 +135,6 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
     for i in range(len(data["hr"])):
       def_maps[i] = (data["hr"][i] > 0).astype(float)
     data['dm'] = def_maps
-
-    '''
-    print("===> Computing def_maps")
-    model = UNet(in_channels=1, out_channels=1).float()
-    model.load_state_dict(torch.load("result_def_map/20221103183019-scale_4-model_UNET-epochs_100-lr_0.0005/trained_model.pt"))
-    def_maps = np.empty((len(data["hr"]), data["hr"][0].shape[0], data["hr"][0].shape[1]), dtype=float)
-    transform = torchvision.transforms.ToTensor()
-    for i in tqdm(range(len(data["hr"])), desc="Computing def_maps"):
-      input_tensor = transform(data["lr"][i])
-      input_tensor = torch.unsqueeze(input_tensor, dim=0)
-      with torch.no_grad():
-        tensor_output = model.forward(input_tensor.float())
-      act = nn.Sigmoid()
-      tensor_output = act(tensor_output) > 0.5
-      tensor_output = tensor_output.float()
-      def_maps[i] = tensor_output[0][0].numpy()
-    '''
 
   if fill:
     for i in range(len(data["hr"])):

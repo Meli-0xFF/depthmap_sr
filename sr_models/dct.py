@@ -6,7 +6,7 @@ import kornia
 import torch.nn.functional as F
 import sys
 
-sys.path.append("..")
+sys.path.append("../..")
 
 
 class Weight_Prediction_Network(nn.Module):

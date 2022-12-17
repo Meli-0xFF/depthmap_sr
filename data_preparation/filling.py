@@ -1,14 +1,9 @@
-import numpy as np
-#from dataset import DepthMapSRDataset
-from torch.utils.data import DataLoader
-from pointcloud import *
 import torch
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from skimage import measure, segmentation
+import numpy as np
 from alive_progress import alive_bar
+from skimage import measure, segmentation
+from evaluation.pointcloud import PointCloud
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def fill_depth_map(img, background_value):
   mask = np.where(img > 0, 0, 1).astype(np.uint8)
@@ -47,43 +42,3 @@ def fill_depth_map(img, background_value):
       img = np.where(hole > 0, hole, img)
 
     return img
-
-'''
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-dataset_name = 'lr-4-warior'
-norm_file_path = 'dataset/' + dataset_name + '_norm.npy'
-
-assert os.path.isfile(norm_file_path), "Normalization file for dataset '" + dataset_name + "' does not exist"
-norm_data = np.load(norm_file_path, allow_pickle=True).tolist()
-depth_max = norm_data["depth"][1]
-
-dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=False)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-
-lr_depth_map, texture, hr_depth_map = next(iter(dataloader))
-unfilled_hr_depth_map = hr_depth_map.clone()
-
-hr_depth_map.to(torch.device(device))
-unfilled_hr_depth_map.to(torch.device(device))
-
-img = hr_depth_map[0][0].float().numpy()
-filled = fill_depth_map(img, depth_max + 1)
-
-cmap = mpl.cm.get_cmap("winter").copy()
-cmap.set_under(color='black')
-
-hr_pcl_unfilled = PointCloud(unfilled_hr_depth_map[0][0].numpy())
-hr_pcl_unfilled.create_ply("UNFILLED-hr-ptcloud-actual")
-
-hr_pcl = PointCloud(filled)
-hr_pcl.create_ply("FILLED-hr-ptcloud-actual")
-
-plt.figure(plt.figure('HR Depth map UNFILLED'))
-plt.imshow(unfilled_hr_depth_map[0][0], cmap=cmap, vmin=0.0001)
-
-plt.figure(plt.figure('HR Depth map'))
-plt.imshow(filled, cmap=cmap, vmin=0.0001)
-
-plt.show()
-'''
