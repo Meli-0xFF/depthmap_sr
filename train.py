@@ -30,7 +30,7 @@ if not os.path.exists(result_root):
 logging.basicConfig(filename='%s/train.log' % result_root, format='%(asctime)s %(message)s', level=logging.INFO)
 
 print('Loading datasets...')
-dataset_name = 'lr-4-warior-FILLED'
+dataset_name = "warior-scale_4-filled-with_canny"
 
 train_dataset = DepthMapSRDataset(dataset_name, train=True, task='depth_map_sr', norm=True)
 test_dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True)

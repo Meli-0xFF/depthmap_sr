@@ -18,7 +18,7 @@ def grid_generator(k, r, n):
                                    torch.linspace(k // 2, k // 2 + r - 1, steps=r)])
   grid = torch.stack([grid_x, grid_y], 2).view(r, r, 2)
 
-  return grid.unsqueeze(0).repeat(n, 1, 1, 1).cuda()
+  return grid.unsqueeze(0).repeat(n, 1, 1, 1)
 
 
 class Kernel_DKN(nn.Module):
