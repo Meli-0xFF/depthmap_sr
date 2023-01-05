@@ -16,7 +16,7 @@ def create_dataset_norm_data(dataset_name):
   guide_interval = [1000000.0, 0.0]
   depth_interval = [1000000.0, 0.0]
 
-  for batch, (lr_depth_map, texture, hr_depth_map, def_map) in enumerate(dataloader):
+  for batch, (lr_depth_map, texture, hr_depth_map, def_map, canny_mask) in enumerate(dataloader):
     guide_min = torch.min(texture).item()
     guide_max = torch.max(texture).item()
 
