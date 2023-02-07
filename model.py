@@ -4,7 +4,7 @@ from tqdm import tqdm
 from sr_models.fdsr import FDSR_Net
 from sr_models.dkn import DKN
 from sr_models.dct import DCTNet
-from metrics import canny_loss
+import metrics
 
 class Model:
   def __init__(self, name, train_dataloader, test_dataloader):
@@ -55,7 +55,7 @@ class Model:
       canny_mask = canny_mask.to(torch.device(self.device))
 
       pred = self.model.forward((texture.float(), lr_depth_map.float()))
-      loss = self.loss_function(pred.float(), hr_depth_map.float()) + 2 * canny_loss(pred.float(), hr_depth_map.float(), canny_mask.float())
+      loss = metrics.var_loss(pred.float(), hr_depth_map.float())
       loss.backward()
 
       self.optimizer.step()
@@ -91,7 +91,7 @@ class Model:
         canny_mask = canny_mask.to(torch.device(self.device))
 
         pred = self.model.forward((texture.float(), lr_depth_map.float()))
-        test_loss += self.loss_function(pred, hr_depth_map) + 2 * canny_loss(pred.float(), hr_depth_map.float(), canny_mask.float())
+        test_loss += metrics.var_loss(pred.float(), hr_depth_map.float())
 
     test_loss /= len(self.test_dataloader)
 

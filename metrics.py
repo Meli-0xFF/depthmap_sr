@@ -1,12 +1,7 @@
 import torch
-import numpy as np
 from torch import Tensor
 import kornia
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from torch.utils.data import DataLoader
 from dataset import *
-from data_preparation.normalization import Normalization
 
 def rmse(a: Tensor, b: Tensor):
   err = torch.mean((a.float() - b.float()) ** 2)
@@ -39,3 +34,14 @@ def get_canny_mask(img: Tensor):
   _, edges = canny(img.float())
   canny_mask: torch.tensor = (gauss(edges.float()) > 0).float()
   return canny_mask
+
+
+def get_variance_image(img: Tensor):
+  mean = torch.mean(img)
+  var = torch.pow((img - mean), 2)
+  var = var / torch.max(var)
+  return var
+
+def var_loss(pred: Tensor, gt: Tensor):
+  var = get_variance_image(gt)
+  return torch.sum(torch.abs(gt.float() - pred.float()) * var) / (gt.size(2) * gt.size(3))

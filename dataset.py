@@ -11,12 +11,13 @@ from metrics import get_canny_mask
 
 
 class DepthMapSRDataset(Dataset):
-  def __init__(self, name, train=True, train_part=0.7, task='depth_map_sr', norm=False):
+  def __init__(self, name, train=True, train_part=0.7, task='depth_map_sr', norm=False, gaussian_noise=False):
     self.name = name
     self.train = train
     self.train_part = train_part
     self.task = task
     self.norm = norm
+    self.gaussian_noise = gaussian_noise
 
     assert os.path.isfile('dataset/' + self.name + '.npy'), "Dataset '" + self.name + "' does not exist"
     self.data = np.load('dataset/' + self.name + '.npy', allow_pickle=True).tolist()
@@ -78,7 +79,7 @@ class DepthMapSRDataset(Dataset):
     return sample[0], sample[1], sample[2], sample[3], sample[4]
 
 
-def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False, canny=False):
+def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False, canny=False, gaussian_noise=False):
   print("--- CREATE DATASET: " + name + " ---")
   data = dict()
   hr_depth_maps = None
@@ -122,6 +123,11 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
                                                   size=(hr_depth_maps.shape[1], hr_depth_maps.shape[2]),
                                                   mode='bilinear',
                                                   align_corners=False)
+      if gaussian_noise:
+        noise = torch.randn_like(lr_tensor)
+        noise *= 5
+        lr_tensor += noise
+
       lr_depth_map = lr_tensor.numpy()
 
     lr_depth_maps[idx] = lr_depth_map

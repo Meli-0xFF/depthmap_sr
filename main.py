@@ -13,30 +13,31 @@ import metrics
 
 
 def main():
-  dataset_name = "warior-scale_4-filled-with_canny"
+  dataset_name = "BILINEAR-LED-WARIOR-scale_2-filled-with_canny"
 
-  dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True)
+  dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True, gaussian_noise=False)
   dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
   lr_depth_map, texture, hr_depth_map, def_map, canny_mask = next(iter(dataloader))
-  #texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
-  model = FDSR_Net(num_feats=32, kernel_size=3).float()
-  #model = DKN(kernel_size=3, filter_size=15, residual=True).float()
+  texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
+  #model = FDSR_Net(num_feats=32, kernel_size=3).float()
+  model = DKN(kernel_size=3, filter_size=15, residual=True).float()
   #model = DCTNet()
-  model.load_state_dict(torch.load("result/20230104185858-model_FDSR-epochs_1000/trained_model.pt"))
+  model.load_state_dict(torch.load("result/20230131120919-model_DKN-epochs_20/trained_model.pt"))
 
   with torch.no_grad():
     tensor_output = model.forward((texture.float(), lr_depth_map.float()))
     canny_loss = metrics.canny_loss(tensor_output, hr_depth_map, canny_mask).item()
-    print(torch.max(tensor_output))
+    var_loss = metrics.var_loss(tensor_output, hr_depth_map).item()
     tensor_output = torch.where(hr_depth_map >= 0, tensor_output, -1.0)
 
   l1_loss = torch.nn.L1Loss()
 
   print("L1 Loss: " + str(l1_loss(tensor_output, hr_depth_map).item()))
   print("Canny loss: " + str(canny_loss))
+  print("Var loss: " + str(var_loss))
 
-  n = Normalization('lr-4-warior-FILLED')
+  n = Normalization(dataset_name)
 
   lr_pcl = PointCloud(n.recover_normalized_sample(lr_depth_map, "depth")[0][0].numpy())
   hr_pcl = PointCloud(def_map[0][0].numpy() * n.recover_normalized_sample(hr_depth_map, "depth")[0][0].numpy())
@@ -48,6 +49,10 @@ def main():
 
   cmap = mpl.cm.get_cmap("winter").copy()
   cmap.set_under(color='black')
+
+  var = metrics.get_variance_image(hr_depth_map)
+  plt.figure('HR Variance')
+  plt.imshow(var[0][0],  cmap='gray')
 
   plt.figure('LR Depth map')
   plt.imshow(n.recover_normalized_sample(lr_depth_map, "depth")[0][0], cmap=cmap, vmin=500.0)
