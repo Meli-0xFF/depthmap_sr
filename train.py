@@ -7,15 +7,16 @@ from model import Model
 
 
 parser = argparse.ArgumentParser(description='Torch Depth map SR')
-parser.add_argument('--model', default='FDSR', help='choose model')
+parser.add_argument('--model', default='DKN', help='choose model')
 parser.add_argument('--result', default='./result', help='result dir')
+parser.add_argument('--epochs', default=100, help='set epochs number')
 opt = parser.parse_args()
 
-epochs = 100
+epochs = opt.epochs
 batch_size = 1
 
 if opt.model == 'FDSR':
-  epochs = 1000
+  epochs = 100
 elif opt.model == 'DKN':
   epochs = 20
 elif opt.model == 'DCT':
@@ -30,10 +31,10 @@ if not os.path.exists(result_root):
 logging.basicConfig(filename='%s/train.log' % result_root, format='%(asctime)s %(message)s', level=logging.INFO)
 
 print('Loading datasets...')
-dataset_name = "warior-scale_4-filled-with_canny"
+dataset_name = "NEAREST-LED-WARIOR-scale_2-filled-with_canny"
 
-train_dataset = DepthMapSRDataset(dataset_name, train=True, task='depth_map_sr', norm=True)
-test_dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True)
+train_dataset = DepthMapSRDataset(dataset_name, train=True, task='depth_map_sr', norm=True, gaussian_noise=False)
+test_dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True, gaussian_noise=False)
 
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -45,8 +46,8 @@ for i in range(epochs):
   logging.info("===> Epoch[{}/{}]".format(i+1, epochs))
   train_loss = model.train()
   test_loss = model.test()
-  print(">>> Training Loss: {:.4f} ### Testing Loss: {:>8f}".format(train_loss, test_loss))
-  logging.info(">>> Training Loss: {:.4f} ### Testing Loss: {:>8f}".format(train_loss, test_loss))
+  print(">>> Training Loss: {:.15f} ### Testing Loss: {:.15f}".format(train_loss, test_loss))
+  logging.info(">>> Training Loss: {:.15f} ### Testing Loss: {:.15f}".format(train_loss, test_loss))
 
   if (i + 1) % 100 == 0:
     model.save_checkpoint(result_root, i)
