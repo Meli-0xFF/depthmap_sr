@@ -96,7 +96,7 @@ class OctaveConv(nn.Module):
         return x_h2h, x_l2l
       else:
         x_l2h = self.conv_l2h(x_l)
-        x_l2h = interpolate(x_l2h, size=(200, 140), mode='bilinear', align_corners=False) if self.stride == 1 else x_l2h
+        x_l2h = interpolate(x_l2h, size=(200, 140), mode='bilinear', align_corners=False) if self.stride == 1 else x_l2h # (120, 160)
         x_h = x_l2h + x_h2h
         x_l = x_h2l + x_l2l if x_h2l is not None and x_l2l is not None else None
         return x_h, x_l
