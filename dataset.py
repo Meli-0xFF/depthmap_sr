@@ -79,7 +79,7 @@ class DepthMapSRDataset(Dataset):
     return sample[0], sample[1], sample[2], sample[3], sample[4]
 
 
-def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False, canny=False, gaussian_noise=False):
+def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False, canny=False, gaussian_noise=False, fill_texture=False):
   print("--- CREATE DATASET: " + name + " ---")
   data = dict()
   hr_depth_maps = None
@@ -103,6 +103,12 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
       m = np.max(data["hr"][i])
       if m > depth_max:
         depth_max = m
+
+  if def_maps:
+    def_maps = np.empty((len(data["hr"]), data["hr"][0].shape[0], data["hr"][0].shape[1]), dtype=float)
+    for i in range(len(data["hr"])):
+      def_maps[i] = (data["hr"][i] > 0).astype(float)
+    data['dm'] = def_maps
 
   print("===> Loading LR depth maps")
   idx = 0
@@ -140,15 +146,14 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
     texture = cv.imread(textures_dir + file, cv.IMREAD_ANYDEPTH)
     if textures is None:
       textures = np.empty((dataset_size, texture.shape[0], texture.shape[1]), dtype=float)
+
+    if fill_texture:
+      print("> Augmenting HR textures")
+      texture = fill_depth_map(texture * def_maps[idx], 1)
+
     textures[idx] = texture
     idx += 1
   data['tx'] = textures
-
-  if def_maps:
-    def_maps = np.empty((len(data["hr"]), data["hr"][0].shape[0], data["hr"][0].shape[1]), dtype=float)
-    for i in range(len(data["hr"])):
-      def_maps[i] = (data["hr"][i] > 0).astype(float)
-    data['dm'] = def_maps
 
   if fill:
     for i in range(len(data["hr"])):
