@@ -5,7 +5,6 @@ import torch
 from dataset import *
 from sr_models.fdsr import FDSR_Net
 from sr_models.dkn import DKN
-from sr_models.dct import DCTNet
 from torch.utils.data import DataLoader
 from evaluation.pointcloud import *
 from data_preparation.normalization import Normalization
@@ -13,64 +12,74 @@ import metrics
 
 
 def main():
-  dataset_name = "BILINEAR-LED-WARIOR-scale_2-filled-with_canny"
+  dataset_name = "NEAREST-LED-WARIOR-scale_4-ACTUAL"
 
   dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True, gaussian_noise=False)
   dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
-  lr_depth_map, texture, hr_depth_map, def_map, canny_mask = next(iter(dataloader))
-  texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
-  #model = FDSR_Net(num_feats=32, kernel_size=3).float()
-  model = DKN(kernel_size=3, filter_size=15, residual=True).float()
-  #model = DCTNet()
-  model.load_state_dict(torch.load("result/20230131120919-model_DKN-epochs_20/trained_model.pt"))
+  lr_depth_map, texture, hr_depth_map, def_map, object_mask = next(iter(dataloader))
+  model1 = FDSR_Net(num_feats=32, kernel_size=3, trainable_upsampling=False).float()
+  model2 = DKN(kernel_size=3, filter_size=15, residual=True, trainable_upsampling=False).float()
+  model1.load_state_dict(torch.load("result/20230302145237-model_FDSR-epochs_1000/trained_model.pt"))
+  model2.load_state_dict(torch.load("result/20230302172223-model_DKN-epochs_20/trained_model.pt"))
 
   with torch.no_grad():
-    tensor_output = model.forward((texture.float(), lr_depth_map.float()))
-    canny_loss = metrics.canny_loss(tensor_output, hr_depth_map, canny_mask).item()
-    var_loss = metrics.var_loss(tensor_output, hr_depth_map).item()
-    tensor_output = torch.where(hr_depth_map >= 0, tensor_output, -1.0)
+    tensor_output1 = model1.forward((texture.float(), lr_depth_map.float()))
+    tensor_output2 = model2.forward((torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0).float(), lr_depth_map.float()))
 
-  l1_loss = torch.nn.L1Loss()
+    object_loss1 = metrics.object_loss(tensor_output1.float(), hr_depth_map.float(), object_mask.float())
+    object_loss2 = metrics.object_loss(tensor_output2.float(), hr_depth_map.float(), object_mask.float())
+    object_loss3 = metrics.object_loss(lr_depth_map.float(), hr_depth_map.float(), object_mask.float())
 
-  print("L1 Loss: " + str(l1_loss(tensor_output, hr_depth_map).item()))
-  print("Canny loss: " + str(canny_loss))
-  print("Var loss: " + str(var_loss))
+    tensor_output1 = torch.where(hr_depth_map >= 0, tensor_output1, -1.0)
+    tensor_output2 = torch.where(hr_depth_map >= 0, tensor_output2, -1.0)
+
+  mse_loss = torch.nn.MSELoss()
 
   n = Normalization(dataset_name)
 
-  lr_pcl = PointCloud(n.recover_normalized_sample(lr_depth_map, "depth")[0][0].numpy())
-  hr_pcl = PointCloud(def_map[0][0].numpy() * n.recover_normalized_sample(hr_depth_map, "depth")[0][0].numpy())
-  out_pcl = PointCloud(def_map[0][0].numpy() * n.recover_normalized_sample(tensor_output, "depth")[0][0].numpy())
+  print("Object loss FDSR: " + str(object_loss1.item()))
+  print("Object loss DKN: " + str(object_loss2.item()))
+  print("Object loss NEAREST: " + str(object_loss3.item()))
+
+  print("RMSE FDSR: " + str(torch.sqrt(mse_loss(tensor_output1 * def_map, hr_depth_map * def_map)).item()))
+  print("RMSE DKN: " + str(torch.sqrt(mse_loss(tensor_output2 * def_map, hr_depth_map * def_map)).item()))
+  print("RMSE NEAREST: " + str(torch.sqrt(mse_loss(lr_depth_map * def_map, hr_depth_map * def_map)).item()))
+
+  print("RMSE FDSR real: " + str(torch.sqrt(mse_loss(n.recover_normalized_sample(tensor_output1, "depth") * def_map, n.recover_normalized_sample(hr_depth_map, "depth") * def_map)).item()))
+  print("RMSE DKN real: " + str(torch.sqrt(mse_loss(n.recover_normalized_sample(tensor_output2, "depth") * def_map, n.recover_normalized_sample(hr_depth_map, "depth") * def_map)).item()))
+  print("RMSE NEAREST real: " + str(torch.sqrt(mse_loss(n.recover_normalized_sample(lr_depth_map, "depth") * def_map, n.recover_normalized_sample(hr_depth_map, "depth") * def_map)).item()))
+
+  lr_pcl = PointCloud((n.recover_normalized_sample(lr_depth_map, "depth") * def_map)[0][0].numpy())
+  hr_pcl = PointCloud((n.recover_normalized_sample(hr_depth_map, "depth") * def_map)[0][0].numpy())
+  out_pcl_fdsr = PointCloud((n.recover_normalized_sample(tensor_output1, "depth") * def_map)[0][0].numpy())
+  out_pcl_dkn = PointCloud((n.recover_normalized_sample(tensor_output2, "depth") * def_map)[0][0].numpy())
 
   lr_pcl.create_ply("lr-ptcloud")
   hr_pcl.create_ply("hr-ptcloud")
-  out_pcl.create_ply("out-ptcloud")
+  out_pcl_fdsr.create_ply("out-ptcloud-FDSR", clean=True)
+  out_pcl_dkn.create_ply("out-ptcloud-DKN", clean=True)
 
   cmap = mpl.cm.get_cmap("winter").copy()
   cmap.set_under(color='black')
 
-  var = metrics.get_variance_image(hr_depth_map)
-  plt.figure('HR Variance')
-  plt.imshow(var[0][0],  cmap='gray')
+  plt.figure('Object map')
+  plt.imshow(object_mask[0][0],  cmap='gray')
 
   plt.figure('LR Depth map')
-  plt.imshow(n.recover_normalized_sample(lr_depth_map, "depth")[0][0], cmap=cmap, vmin=500.0)
+  plt.imshow(n.recover_normalized_sample(lr_depth_map, "depth")[0][0] * def_map[0][0], cmap=cmap, vmin=500.0)
 
   plt.figure('HR Texture')
   plt.imshow(n.recover_normalized_sample(texture, "guide")[0][0], cmap='gray')
 
-  plt.figure('HR Def map')
-  plt.imshow(def_map[0][0], cmap='gray')
-
-  plt.figure('HR Canny mask')
-  plt.imshow(canny_mask[0][0], cmap='gray')
-
   plt.figure(plt.figure('HR Depth map'))
   plt.imshow(n.recover_normalized_sample(hr_depth_map , "depth")[0][0] * def_map[0][0], cmap=cmap, vmin=0.0000001)
 
-  plt.figure(plt.figure('Predicted HR Depth map'))
-  plt.imshow(n.recover_normalized_sample(tensor_output, "depth")[0][0] * def_map[0][0], cmap=cmap, vmin=500.0)
+  plt.figure(plt.figure('Predicted HR Depth map FDSR'))
+  plt.imshow(n.recover_normalized_sample(tensor_output1, "depth")[0][0] * def_map[0][0], cmap=cmap, vmin=500.0)
+
+  plt.figure(plt.figure('Predicted HR Depth map DKN'))
+  plt.imshow(n.recover_normalized_sample(tensor_output2, "depth")[0][0] * def_map[0][0], cmap=cmap, vmin=500.0)
 
   plt.show()
 

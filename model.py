@@ -43,7 +43,7 @@ class Model:
     train_loss = 0
     bar = tqdm(total=len(self.train_dataloader.dataset), desc="Train")
 
-    for batch, (lr_depth_map, texture, hr_depth_map, def_map, canny_mask) in enumerate(self.train_dataloader):
+    for batch, (lr_depth_map, texture, hr_depth_map, def_map, object_mask) in enumerate(self.train_dataloader):
       self.optimizer.zero_grad()
 
       if self.name == 'DKN' or self.name == 'DCT':
@@ -52,10 +52,10 @@ class Model:
       lr_depth_map = lr_depth_map.to(torch.device(self.device))
       texture = texture.to(torch.device(self.device))
       hr_depth_map = hr_depth_map.to(torch.device(self.device))
-      canny_mask = canny_mask.to(torch.device(self.device))
+      object_mask = object_mask.to(torch.device(self.device))
 
       pred = self.model.forward((texture.float(), lr_depth_map.float()))
-      loss = metrics.var_loss(pred.float(), hr_depth_map.float())
+      loss = metrics.object_loss(pred.float(), hr_depth_map.float(), object_mask.float())
       loss.backward()
 
       self.optimizer.step()
@@ -81,17 +81,17 @@ class Model:
     test_loss = 0
 
     with torch.no_grad():
-      for lr_depth_map, texture, hr_depth_map, def_map, canny_mask in tqdm(self.test_dataloader, desc="Test"):
+      for lr_depth_map, texture, hr_depth_map, def_map, object_mask in tqdm(self.test_dataloader, desc="Test"):
         if self.name == 'DKN' or self.name == 'DCT':
           texture = torch.unsqueeze(torch.stack((texture[0][0], texture[0][0], texture[0][0])), dim=0)
 
         lr_depth_map = lr_depth_map.to(torch.device(self.device))
         texture = texture.to(torch.device(self.device))
         hr_depth_map = hr_depth_map.to(torch.device(self.device))
-        canny_mask = canny_mask.to(torch.device(self.device))
+        object_mask = object_mask.to(torch.device(self.device))
 
         pred = self.model.forward((texture.float(), lr_depth_map.float()))
-        test_loss += metrics.var_loss(pred.float(), hr_depth_map.float())
+        test_loss += metrics.object_loss(pred.float(), hr_depth_map.float(), object_mask.float())
 
     test_loss /= len(self.test_dataloader)
 

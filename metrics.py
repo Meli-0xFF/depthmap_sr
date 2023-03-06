@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 from torch import Tensor
 import kornia
@@ -45,3 +46,7 @@ def get_variance_image(img: Tensor):
 def var_loss(pred: Tensor, gt: Tensor):
   var = get_variance_image(gt)
   return torch.sum(torch.abs(gt.float() - pred.float()) * var) / (gt.size(2) * gt.size(3))
+
+def object_loss(pred: Tensor, gt: Tensor, object_mask: Tensor):
+  weight = torch.where(object_mask < 0, 0.01, object_mask)
+  return torch.sum(torch.pow((gt.float() - pred.float()) * weight, 2)) / (gt.size(2) * gt.size(3))
