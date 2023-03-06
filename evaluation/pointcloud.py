@@ -2,7 +2,7 @@ import numpy as np
 import skimage.io, skimage.transform, skimage.measure
 from alive_progress import alive_bar
 import os
-
+import open3d as o3d
 
 class PointCloud:
   def __init__(self, depth_map):
@@ -38,25 +38,12 @@ class PointCloud:
 
     return point_cloud
 
-  def create_ply(self, file_name):
-    print("Generating " + file_name + ".ply ### Size: " + str(self.point_cloud.shape[0]) + " vertices")
+  def create_ply(self, file_name, clean=False):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(self.point_cloud)
+    if clean:
+      pcd, ind = pcd.remove_statistical_outlier(nb_neighbors=20,
+                                                 std_ratio=2.0)
 
-    if os.path.exists("ply/" + file_name + ".ply"):
-      os.remove("ply/" + file_name + ".ply")
-
-    file = open("ply/" + file_name + ".ply", "a")
-
-    file.write("ply\n")
-    file.write("format ascii 1.0\n")
-    file.write("element vertex " + str(self.point_cloud.shape[0]) + "\n")
-    file.write("property float32 x\n")
-    file.write("property float32 y\n")
-    file.write("property float32 z\n")
-    file.write("end_header\n")
-
-    with alive_bar(self.point_cloud.shape[0]) as bar:
-      for i in range(0, self.point_cloud.shape[0]):
-        file.write(str(self.point_cloud[i, 0]) + " " + str(self.point_cloud[i, 1]) + " " + str(self.point_cloud[i, 2]) + "\n")
-        bar()
-
-    file.close()
+    print("Generating " + file_name + ".ply ### Size: " + str(len(pcd.points)) + " vertices")
+    o3d.io.write_point_cloud("ply/" + file_name + ".ply", pcd)
