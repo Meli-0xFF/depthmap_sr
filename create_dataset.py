@@ -10,6 +10,6 @@ create_dataset(dataset_name, hr_dir='data/led-warior/depth_map_out/',
                                 def_maps=True,
                                 fill=True,
                                 canny=False,
-                                fill_texture=True)
+                                fill_tex=True)
 
 create_dataset_norm_data(dataset_name)
