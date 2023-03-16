@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from data_preparation.normalization import Normalization
 from data_preparation.filling import fill_depth_map
 from metrics import get_canny_mask
-from object_filling import fill_depth_map, fill_hr_texture
+from object_filling import fill_depth_map, fill_texture
 
 
 class DepthMapSRDataset(Dataset):
@@ -85,7 +85,7 @@ class DepthMapSRDataset(Dataset):
     return sample[0], sample[1], sample[2], sample[3], sample[4]#, sample[5]
 
 
-def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False, canny=False, fill_texture=False):
+def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True, def_maps=False, canny=False, fill_tex=False):
   print("--- CREATE DATASET: " + name + " ---")
   data = dict()
   hr_depth_maps = None
@@ -164,10 +164,10 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
     idx += 1
   data['tx'] = textures
 
-  if fill_texture:
+  if fill_tex:
     for i in range(len(data["hr"])):
       print("> Augmenting HR texture " + str(i + 1) + "/" + str(len(data["hr"])))
-      data['tx'][i] = fill_hr_texture(data['tx'][i], def_maps[i])
+      data['tx'][i] = fill_texture(data['tx'][i], def_maps[i])
 
   if canny:
     canny_masks = np.empty((len(data["hr"]), data["hr"][0].shape[0], data["hr"][0].shape[1]), dtype=float)
