@@ -18,7 +18,7 @@ def grid_generator(k, r, n):
                                    torch.linspace(k // 2, k // 2 + r - 1, steps=r)])
   grid = torch.stack([grid_x, grid_y], 2).view(r, r, 2)
 
-  return grid.unsqueeze(0).repeat(n, 1, 1, 1)
+  return grid.unsqueeze(0).repeat(n, 1, 1, 1).cuda()
 
 
 class Kernel_DKN(nn.Module):
@@ -54,7 +54,7 @@ class Kernel_DKN(nn.Module):
 
 
 class DKN(nn.Module):
-  def __init__(self, kernel_size, filter_size, residual=True):
+  def __init__(self, kernel_size, filter_size, residual=True, trainable_upsampling=False):
     super(DKN, self).__init__()
     self.ImageKernel = Kernel_DKN(input_channel=3, kernel_size=kernel_size)
     self.DepthKernel = Kernel_DKN(input_channel=1, kernel_size=kernel_size)

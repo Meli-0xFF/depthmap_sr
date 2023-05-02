@@ -16,11 +16,9 @@ epochs = opt.epochs
 batch_size = 1
 
 if opt.model == 'FDSR':
-  epochs = 100
+  epochs = 1000
 elif opt.model == 'DKN':
-  epochs = 20
-elif opt.model == 'DCT':
-  epochs = 200
+  epochs = 100
 
 s = datetime.now().strftime('%Y%m%d%H%M%S')
 result_root = '%s/%s-model_%s-epochs_%s' % (opt.result, s, opt.model, epochs)
@@ -31,7 +29,7 @@ if not os.path.exists(result_root):
 logging.basicConfig(filename='%s/train.log' % result_root, format='%(asctime)s %(message)s', level=logging.INFO)
 
 print('Loading datasets...')
-dataset_name = "NEAREST-LED-WARIOR-scale_2-filled-with_canny"
+dataset_name = "NEAREST-BIG-DATASET"
 
 train_dataset = DepthMapSRDataset(dataset_name, train=True, task='depth_map_sr', norm=True, gaussian_noise=False)
 test_dataset = DepthMapSRDataset(dataset_name, train=False, task='depth_map_sr', norm=True, gaussian_noise=False)

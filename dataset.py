@@ -5,7 +5,7 @@ import numpy as np
 from torchvision import transforms
 from torch.utils.data import Dataset
 from data_preparation.normalization import Normalization
-from data_preparation.filling import fill_depth_map
+#from data_preparation.filling import fill_depth_map
 from metrics import get_canny_mask
 from object_filling import fill_depth_map, fill_texture
 
@@ -136,8 +136,7 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
       lr_tensor = torch.from_numpy(np.expand_dims(lr_depth_map, 0))
       lr_tensor = torch.nn.functional.interpolate(lr_tensor.unsqueeze(0),
                                                   size=(hr_depth_maps.shape[1], hr_depth_maps.shape[2]),
-                                                  mode='bilinear',
-                                                  align_corners=False)
+                                                  mode='nearest-exact')
 
       lr_depth_map = lr_tensor.numpy()
 
@@ -151,6 +150,7 @@ def create_dataset(name, hr_dir, lr_dir, textures_dir, scale_lr=True, fill=True,
       print("Filling LR texture " + str(i + 1) + "/" + str(len(data["hr"])))
       lr_depth_map, object_map = fill_depth_map(lr_depth_maps[i] * def_maps[i], depth_max)
       object_maps[i] = object_map
+      data['lr'][i] = lr_depth_map
     data['om'] = object_maps
 
   print("===> Loading HR textures")

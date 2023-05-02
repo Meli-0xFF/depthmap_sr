@@ -1,4 +1,5 @@
-import numpy as np
+import numpy as cp
+import cupy as cp
 from alive_progress import alive_bar
 
 class Downsampling:
@@ -6,7 +7,7 @@ class Downsampling:
     self.hr_depth_map = hr_depth_map
     self.factor = factor
 
-    self.lr_depth_map = np.zeros((int(self.hr_depth_map.shape[0] / self.factor), int(self.hr_depth_map.shape[1] / self.factor)))
+    self.lr_depth_map = cp.zeros((int(self.hr_depth_map.shape[0] / self.factor), int(self.hr_depth_map.shape[1] / self.factor)))
 
   def median_method(self):
     edge_treshold = 0.1
@@ -25,9 +26,9 @@ class Downsampling:
 
           w = self.hr_depth_map[i * self.factor:i * self.factor + w_heigth, j * self.factor:j * self.factor + w_width].flatten()
 
-          w_avg = np.mean(w)
-          w_min = np.min(w)
-          w_max = np.max(w)
+          w_avg = cp.mean(w)
+          w_min = cp.min(w)
+          w_max = cp.max(w)
 
           fg = w[w <= w_avg]
 
@@ -42,11 +43,11 @@ class Downsampling:
             if fg_median == 0:
               self.lr_depth_map[i, j] = w_max
             else:
-              self.lr_depth_map[i, j] = np.median(fg)
+              self.lr_depth_map[i, j] = cp.median(cp.asarray(fg))
           bar()
 
     return self.lr_depth_map
 
   def __custom_median(self, array):
-    sorted = np.sort(array)
+    sorted = cp.sort(array)
     return sorted[int(sorted.shape[0]/2)]

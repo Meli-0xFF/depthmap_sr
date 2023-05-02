@@ -57,10 +57,10 @@ def get_plane(img):
   cmap = mpl.cm.get_cmap("winter").copy()
   cmap.set_under(color='black')
   plt.figure(plt.figure('HR Depth map'))
-  plt.imshow(img, cmap=cmap, vmin=0.001)
+  plt.imshow(img.get(), cmap=cmap, vmin=0.001)
   
   for i in range(mean_points.shape[0]):
-    plt.scatter(int(mean_points[i, 1]), int(mean_points[i, 0]), c='red', marker='o')
+    plt.scatter(int(mean_points[i, 1]), int(mean_points[i, 0]), c='pink', marker='o')
 
   for i in range(depth_points.shape[0]):
     plt.scatter(int(depth_points[i, 1]), int(depth_points[i, 0]), c='yellow', marker='o')
@@ -91,7 +91,7 @@ def get_plane(img):
   real_depth_points = cp.c_[depth_X, depth_Y, depth_Z]
 
   A = real_mean_points[0]
-  B = real_depth_points[0]
+  B = real_depth_points[int(real_depth_points.shape[0] / 2)]
   C = real_mean_points[real_mean_points.shape[0] - 1]
   v1 = C - A
   v2 = B - A
@@ -102,7 +102,7 @@ def get_plane(img):
   plt.figure(plt.figure('HR Depth map'))
   plt.imshow(img, cmap=cmap, vmin=0.001)
   plt.scatter(int(mean_points[0, 1]), int(mean_points[0, 0]), c='red', marker='o')
-  plt.scatter(int(depth_points[0, 1]), int(depth_points[0, 0]), c='red', marker='o')
+  plt.scatter(int(depth_points[int(depth_points.shape[0] / 2), 1]), int(depth_points[int(depth_points.shape[0] / 2), 0]), c='red', marker='o')
   plt.scatter(int(mean_points[mean_points.shape[0] - 1, 1]), int(mean_points[mean_points.shape[0] - 1, 0]), c='red', marker='o')
   plt.show()
   '''
@@ -110,7 +110,6 @@ def get_plane(img):
   normal = cp.cross(v1, v2)
 
   d = -cp.sum(normal * A)
-  #plane = -(normal[0] * x + normal[1] * y + d) / normal[2]
   full_plane = -d / (normal[0] * nv_x + normal[1] * nv_y * (-1.0) + normal[2])
   img_dis = abs(normal[0] * x + + normal[1] * y + normal[2] * img + d) / cp.sqrt(normal[0]**2 + normal[1]**2 + normal[2]**2)
   img_dis = cp.where(img == 0, 0, img_dis)
@@ -168,7 +167,7 @@ def fill_depth_map(img, background_value):
   plt.show()
   '''
 
-  return img, object_map
+  return img.get(), object_map.get()
 
 def fill_texture(tex, def_map):
   mask = np.where(def_map > 0, 0, 1).astype(np.uint8)
@@ -205,4 +204,4 @@ def fill_texture(tex, def_map):
       bar()
 
       tex = cp.where(hole > 0, hole, tex)
-    return tex
+    return tex.get()
