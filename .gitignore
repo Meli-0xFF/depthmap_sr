@@ -134,6 +134,6 @@ dmypy.json
 # Output files
 ply/
 data/
-result/
+# result/
 result_defined_pixels_prediction/
 dataset/

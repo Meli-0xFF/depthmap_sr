@@ -2,11 +2,14 @@ import math
 import torch
 import torch.nn as nn
 from torch.nn.functional import *
-
+from upsampling import Upsampling_module
 
 class FDSR_Net(nn.Module):
-  def __init__(self, num_feats, kernel_size):
+  def __init__(self, num_feats, kernel_size, trainable_upsampling=False):
     super(FDSR_Net, self).__init__()
+    self.trainable_upsampling = trainable_upsampling
+
+    self.upsampling_module = Upsampling_module()
 
     self.conv_tex1 = nn.Conv2d(in_channels=16, out_channels=num_feats,
                               kernel_size=kernel_size, padding=1)
@@ -36,6 +39,10 @@ class FDSR_Net(nn.Module):
 
   def forward(self, x):
     image, depth = x
+
+    if self.trainable_upsampling:
+      depth = self.upsampling_module(depth)
+
     re_im = pixel_unshuffle(image, 4)
     re_dp = pixel_unshuffle(depth, 4)
     dp_in = self.act(self.conv_dp1(re_dp))
